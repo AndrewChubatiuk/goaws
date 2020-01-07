@@ -1,45 +1,8 @@
 package app
 
 /*** config ***/
-type EnvSubsciption struct {
-	Protocol     string
-	EndPoint     string
-	TopicArn     string
-	QueueName    string
-	Raw          bool
-	FilterPolicy string
-}
 
-type EnvTopic struct {
-	Name          string
-	Subscriptions []EnvSubsciption
-}
-
-type EnvQueue struct {
-	Name                          string
-	ReceiveMessageWaitTimeSeconds int
-}
-
-type EnvQueueAttributes struct {
-	VisibilityTimeout             int
-	ReceiveMessageWaitTimeSeconds int
-}
-
-type Environment struct {
-	Host                   string
-	Port                   string
-	SqsPort                string
-	SnsPort                string
-	Region                 string
-	AccountID              string
-	LogToFile              bool
-	LogFile                string
-	Topics                 []EnvTopic
-	Queues                 []EnvQueue
-	QueueAttributeDefaults EnvQueueAttributes
-}
-
-var CurrentEnvironment Environment
+var CurrentEnvironment config.Environment
 
 /*** Common ***/
 type ResponseMetadata struct {

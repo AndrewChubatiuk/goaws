@@ -15,58 +15,52 @@ import (
 	"github.com/p4tin/goaws/app/router"
 )
 
-func main() {
-	var filename string
-	var debug bool
-	flag.StringVar(&filename, "config", "", "config file location + name")
-	flag.BoolVar(&debug, "debug", false, "debug log level (default Warning)")
-	flag.Parse()
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+	  return false
+	}
+	return !info.IsDir()
+}
 
+func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetOutput(os.Stdout)
 
-	if debug {
-		log.SetLevel(log.DebugLevel)
+	var configFile string
+	var environment string
+	var config conf.Config{
+		LogLevel: "warn",
+		ListenAddr: ":4100",
+		Region: "local",
+		AccountID: "queue",
+		QueueAttributeDefaults = EnvQueueAttributes{
+			VisibilityTimeout: 30,
+			ReceiveMessageWaitTimeSeconds: 0,
+		},
+	}
+
+	flag.StringVar(&configFile, "config", "./conf/goaws.yaml", "config file location + name")
+	flag.StringVar(&environment, "env", "Local", "environment name")
+	flag.Parse()
+
+	if fileExists(configFile) {
+		config.LoadConfig(configFile, environment)
+	}
+
+	if level, err := ParseLevel(config.LogLevel); err != nil {
+		log.Fatal(err)
 	} else {
-		log.SetLevel(log.InfoLevel)
-	}
-
-	env := "Local"
-	if flag.NArg() > 0 {
-		env = flag.Arg(0)
-	}
-
-	portNumbers := conf.LoadYamlConfig(filename, env)
-
-	if app.CurrentEnvironment.LogToFile {
-		filename := app.CurrentEnvironment.LogFile
-		file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err == nil {
-			log.SetOutput(file)
-		} else {
-			log.Infof("Failed to log to file: %s, using default stderr", filename)
+		log.SetLevel(level)
+		if config.LogFile != "" && fileExists(config.LogFile) {
+			if logFile, err := os.OpenFile(config.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); err != nil {
+				log.Infof("Failed to log to file: %s, using default stderr", config.LogFile)
+			} else {
+				log.SetOutput(logFile)
+			}
 		}
 	}
 
-	r := router.New()
-
-	quit := make(chan struct{}, 0)
-	go gosqs.PeriodicTasks(1*time.Second, quit)
-
-	if len(portNumbers) == 1 {
-		log.Warnf("GoAws listening on: 0.0.0.0:%s", portNumbers[0])
-		err := http.ListenAndServe("0.0.0.0:"+portNumbers[0], r)
-		log.Fatal(err)
-	} else if len(portNumbers) == 2 {
-		go func() {
-			log.Warnf("GoAws listening on: 0.0.0.0:%s", portNumbers[0])
-			err := http.ListenAndServe("0.0.0.0:"+portNumbers[0], r)
-			log.Fatal(err)
-		}()
-		log.Warnf("GoAws listening on: 0.0.0.0:%s", portNumbers[1])
-		err := http.ListenAndServe("0.0.0.0:"+portNumbers[1], r)
-		log.Fatal(err)
-	} else {
-		log.Fatal("Not enough or too many ports defined to start GoAws.")
-	}
+	srv := server.New(config)
+	srv.Serve()
 }
