@@ -1,14 +1,13 @@
 package app
 
-/*** List Queues Response */
+/*** List Queues */
 type ListQueuesResult struct {
 	QueueUrl []string `xml:"QueueUrl"`
 }
 
 type ListQueuesResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
+	Response
 	Result   ListQueuesResult `xml:"ListQueuesResult"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
 }
 
 /*** Create Queue Response */
@@ -17,12 +16,11 @@ type CreateQueueResult struct {
 }
 
 type CreateQueueResponse struct {
-	Xmlns    string            `xml:"xmlns,attr"`
+	Response
 	Result   CreateQueueResult `xml:"CreateQueueResult"`
-	Metadata ResponseMetadata  `xml:"ResponseMetadata"`
 }
 
-/*** Send Message Response */
+/*** Send Message */
 
 type SendMessageResult struct {
 	MD5OfMessageAttributes string `xml:"MD5OfMessageAttributes"`
@@ -32,12 +30,11 @@ type SendMessageResult struct {
 }
 
 type SendMessageResponse struct {
-	Xmlns    string            `xml:"xmlns,attr"`
+	Response
 	Result   SendMessageResult `xml:"SendMessageResult"`
-	Metadata ResponseMetadata  `xml:"ResponseMetadata"`
 }
 
-/*** Receive Message Response */
+/*** Receive Message */
 
 type ResultMessage struct {
 	MessageId              string                    `xml:"MessageId,omitempty"`
@@ -70,31 +67,40 @@ type ReceiveMessageResult struct {
 }
 
 type ReceiveMessageResponse struct {
-	Xmlns    string               `xml:"xmlns,attr"`
+	Response
 	Result   ReceiveMessageResult `xml:"ReceiveMessageResult"`
-	Metadata ResponseMetadata     `xml:"ResponseMetadata"`
 }
 
-type ChangeMessageVisibilityResult struct {
-	Xmlns    string           `xml:"xmlns,attr"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
+type ChangeMessageVisibilityResponse struct {
+	Response
 }
 
-/*** Delete Message Response */
+/*** Delete Message */
 type DeleteMessageResponse struct {
-	Xmlns    string           `xml:"xmlns,attr,omitempty"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata,omitempty"`
+	Response
 }
 
+/*** Delete Queue */
 type DeleteQueueResponse struct {
-	Xmlns    string           `xml:"xmlns,attr,omitempty"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata,omitempty"`
+	Response
 }
 
+/*** Delete Message Batch */
 type DeleteMessageBatchResultEntry struct {
 	Id string `xml:"Id"`
 }
 
+type DeleteMessageBatchResult struct {
+	Entry []DeleteMessageBatchResultEntry `xml:"DeleteMessageBatchResultEntry"`
+	Error []BatchResultErrorEntry         `xml:"BatchResultErrorEntry,omitempty"`
+}
+
+type DeleteMessageBatchResponse struct {
+	Response
+	Result   DeleteMessageBatchResult `xml:"DeleteMessageBatchResult"`
+}
+
+/*** Send Message Batch */
 type SendMessageBatchResultEntry struct {
 	Id                     string `xml:"Id"`
 	MessageId              string `xml:"MessageId"`
@@ -110,45 +116,29 @@ type BatchResultErrorEntry struct {
 	SenderFault bool   `xml:"SenderFault"`
 }
 
-type DeleteMessageBatchResult struct {
-	Entry []DeleteMessageBatchResultEntry `xml:"DeleteMessageBatchResultEntry"`
-	Error []BatchResultErrorEntry         `xml:"BatchResultErrorEntry,omitempty"`
-}
-
-/*** Delete Message Batch Response */
-type DeleteMessageBatchResponse struct {
-	Xmlns    string                   `xml:"xmlns,attr,omitempty"`
-	Result   DeleteMessageBatchResult `xml:"DeleteMessageBatchResult"`
-	Metadata ResponseMetadata         `xml:"ResponseMetadata,omitempty"`
-}
-
 type SendMessageBatchResult struct {
 	Entry []SendMessageBatchResultEntry `xml:"SendMessageBatchResultEntry"`
 	Error []BatchResultErrorEntry       `xml:"BatchResultErrorEntry,omitempty"`
 }
 
-/*** Delete Message Batch Response */
 type SendMessageBatchResponse struct {
-	Xmlns    string                 `xml:"xmlns,attr,omitempty"`
+	Response
 	Result   SendMessageBatchResult `xml:"SendMessageBatchResult"`
-	Metadata ResponseMetadata       `xml:"ResponseMetadata,omitempty"`
 }
 
-/*** Purge Queue Response */
+/*** Purge Queue */
 type PurgeQueueResponse struct {
-	Xmlns    string           `xml:"xmlns,attr,omitempty"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata,omitempty"`
+	Response
 }
 
-/*** Get Queue Url Response */
+/*** Get Queue Url */
 type GetQueueUrlResult struct {
 	QueueUrl string `xml:"QueueUrl,omitempty"`
 }
 
 type GetQueueUrlResponse struct {
-	Xmlns    string            `xml:"xmlns,attr,omitempty"`
+	Response
 	Result   GetQueueUrlResult `xml:"GetQueueUrlResult"`
-	Metadata ResponseMetadata  `xml:"ResponseMetadata,omitempty"`
 }
 
 /*** Get Queue Attributes ***/
@@ -164,12 +154,11 @@ type GetQueueAttributesResult struct {
 }
 
 type GetQueueAttributesResponse struct {
-	Xmlns    string                   `xml:"xmlns,attr,omitempty"`
+	Response
 	Result   GetQueueAttributesResult `xml:"GetQueueAttributesResult"`
-	Metadata ResponseMetadata         `xml:"ResponseMetadata,omitempty"`
 }
 
+/*** Set Queue Attributes ***/
 type SetQueueAttributesResponse struct {
-	Xmlns    string           `xml:"xmlns,attr,omitempty"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata,omitempty"`
+	Response
 }

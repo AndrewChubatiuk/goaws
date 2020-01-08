@@ -126,21 +126,24 @@ func PeriodicTasks(d time.Duration, quit <-chan struct{}) {
 	}
 }
 
-func ListQueues(w http.ResponseWriter, req *http.Request) {
+func (sqs * SQSService) ListQueues(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/xml")
-	respStruct := app.ListQueuesResponse{}
-	respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
-	respStruct.Metadata = app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}
-	respStruct.Result.QueueUrl = make([]string, 0)
-	queueNamePrefix := req.FormValue("QueueNamePrefix")
 
-	log.Println("Listing Queues")
-	for _, queue := range app.SyncQueues.Queues {
-		app.SyncQueues.Lock()
-		if strings.HasPrefix(queue.Name, queueNamePrefix) {
-			respStruct.Result.QueueUrl = append(respStruct.Result.QueueUrl, fmt.Sprintf(queue.URL, req.Host))
+	resp := app.ListQueuesResponse{
+		Response: api.NewResponse()
+		Result: &ListQueuesResult{
+			QueueUrl = make([]string, 0)
 		}
-		app.SyncQueues.Unlock()
+	}
+
+	queueNamePrefix := req.FormValue("QueueNamePrefix")
+	log.Println("Listing Queues")
+	for _, queue := range sqs.Queues {
+		sqs.Lock()
+		if strings.HasPrefix(queue.Name, queueNamePrefix) {
+			resp.Result.QueueUrl = append(resp.Result.QueueUrl, fmt.Sprintf(queue.URL, req.Host))
+		}
+		sqs.Unlock()
 	}
 	enc := xml.NewEncoder(w)
 	enc.Indent("  ", "    ")
@@ -149,50 +152,41 @@ func ListQueues(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func CreateQueue(w http.ResponseWriter, req *http.Request) {
+func (s * SQS) CreateQueue(args map[string]string) {
 	w.Header().Set("Content-Type", "application/xml")
-	queueName := req.FormValue("QueueName")
+	queueName := args["QueueName"]
 
-	queueUrl := "http://%s/" + app.CurrentEnvironment.AccountID + "/" + queueName
-	if app.CurrentEnvironment.Region != "" {
-		queueUrl = "http://" + app.CurrentEnvironment.Region + ".%s/" + app.CurrentEnvironment.AccountID + "/" + queueName
-	}
-	queueArn := "arn:aws:sqs:" + app.CurrentEnvironment.Region + ":" + app.CurrentEnvironment.AccountID + ":" + queueName
+	queueUrl = "http://" + s.Region + ".%s/" + s.AccountID + "/" + queueName
+	queueArn := "arn:aws:sqs:" + s.Region + ":" + s.AccountID + ":" + queueName
 
-	if _, ok := app.SyncQueues.Queues[queueName]; !ok {
+	if _, ok := s.Queues[queueName]; !ok {
 		log.Println("Creating Queue:", queueName)
 		queue := &app.Queue{
 			Name:                queueName,
 			URL:                 queueUrl,
 			Arn:                 queueArn,
-			TimeoutSecs:         app.CurrentEnvironment.QueueAttributeDefaults.VisibilityTimeout,
-			ReceiveWaitTimeSecs: app.CurrentEnvironment.QueueAttributeDefaults.ReceiveMessageWaitTimeSeconds,
+			TimeoutSecs:         s.QueueAttributeDefaults.VisibilityTimeout,
+			ReceiveWaitTimeSecs: s.QueueAttributeDefaults.ReceiveMessageWaitTimeSeconds,
 			IsFIFO:              app.HasFIFOQueueName(queueName),
 		}
 		if err := validateAndSetQueueAttributes(queue, req.Form); err != nil {
 			createErrorResponse(w, req, err.Error())
 			return
 		}
-		app.SyncQueues.Lock()
-		app.SyncQueues.Queues[queueName] = queue
-		app.SyncQueues.Unlock()
+		s.Lock()
+		s.Queues[queueName] = queue
+		s.Unlock()
 	}
 
-	respStruct := app.CreateQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.CreateQueueResult{QueueUrl: queueUrl}, app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
-	enc := xml.NewEncoder(w)
-	enc.Indent("  ", "    ")
-	if err := enc.Encode(respStruct); err != nil {
-		log.Printf("error: %v\n", err)
-	}
+	return &CreateQueueResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.CreateQueueResult{QueueUrl: queueUrl}, app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
 }
 
-func SendMessage(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/xml")
-	messageBody := req.FormValue("MessageBody")
-	messageGroupID := req.FormValue("MessageGroupId")
+func SendMessage(args map[string]string) (*SendMessageResponse, err){
+	messageBody := args["MessageBody"]
+	messageGroupID := args["MessageGroupId"]
 	messageAttributes := extractMessageAttributes(req, "")
 
-	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
+	queueUrl := getQueueFromPath(args["QueueUrl"], req.URL.String())
 
 	queueName := ""
 	if queueUrl == "" {
@@ -240,12 +234,6 @@ func SendMessage(w http.ResponseWriter, req *http.Request) {
 			RequestId: "00000000-0000-0000-0000-000000000000",
 		},
 	}
-
-	enc := xml.NewEncoder(w)
-	enc.Indent("  ", "    ")
-	if err := enc.Encode(respStruct); err != nil {
-		log.Printf("error: %v\n", err)
-	}
 }
 
 type SendEntry struct {
@@ -256,11 +244,8 @@ type SendEntry struct {
 	MessageDeduplicationId string
 }
 
-func SendMessageBatch(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/xml")
-	req.ParseForm()
-
-	queueUrl := getQueueFromPath(req.FormValue("QueueUrl"), req.URL.String())
+func SendMessageBatch(args map[string]string) {
+	queueUrl := getQueueFromPath(args["QueueUrl"], req.URL.String())
 	queueName := ""
 	if queueUrl == "" {
 		vars := mux.Vars(req)

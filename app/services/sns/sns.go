@@ -90,8 +90,8 @@ func createPemFile() (privkey *rsa.PrivateKey, pemkey []byte, err error) {
 	return
 }
 
-func ListTopics(w http.ResponseWriter, req *http.Request) {
-	content := req.FormValue("ContentType")
+func ListTopics(args map[string]string) (*ListTopicsResponse, error) {
+	content := args["ContentType"]
 
 	respStruct := app.ListTopicsResponse{}
 	respStruct.Xmlns = "http://queue.amazonaws.com/doc/2012-11-05/"
@@ -104,13 +104,12 @@ func ListTopics(w http.ResponseWriter, req *http.Request) {
 		ta := app.TopicArnResult{TopicArn: topic.Arn}
 		respStruct.Result.Topics.Member = append(respStruct.Result.Topics.Member, ta)
 	}
-
-	SendResponseBack(w, req, respStruct, content)
+	return respStruct, nil
 }
 
-func CreateTopic(w http.ResponseWriter, req *http.Request) {
-	content := req.FormValue("ContentType")
-	topicName := req.FormValue("Name")
+func CreateTopic(args map[string]string) (*CreateTopicResponse, error) {
+	content := args["ContentType"]
+	topicName := args["Name"]
 	topicArn := ""
 	if _, ok := app.SyncTopics.Topics[topicName]; ok {
 		topicArn = app.SyncTopics.Topics[topicName].Arn
@@ -125,8 +124,7 @@ func CreateTopic(w http.ResponseWriter, req *http.Request) {
 		app.SyncTopics.Unlock()
 	}
 	uuid, _ := common.NewUUID()
-	respStruct := app.CreateTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.CreateTopicResult{TopicArn: topicArn}, app.ResponseMetadata{RequestId: uuid}}
-	SendResponseBack(w, req, respStruct, content)
+	return app.CreateTopicResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.CreateTopicResult{TopicArn: topicArn}, app.ResponseMetadata{RequestId: uuid}}
 }
 
 // aws --endpoint-url http://localhost:47194 sns subscribe --topic-arn arn:aws:sns:us-west-2:0123456789012:my-topic --protocol email --notification-endpoint my-email@example.com
@@ -757,34 +755,10 @@ func extractMessageFromJSON(msg string, protocol string) (string, error) {
 	return defaultMsg, nil
 }
 
-func createErrorResponse(w http.ResponseWriter, req *http.Request, err string) {
-	er := app.SnsErrors[err]
-	respStruct := app.ErrorResponse{
-		Result:    app.ErrorResult{Type: er.Type, Code: er.Code, Message: er.Message},
+func createErrorResponse(err string) *ErrorResponse {
+	err := app.SnsErrors[err]
+	return app.ErrorResponse{
+		Result:    app.ErrorResult{Type: err.Type, Code: err.Code, Message: err.Message},
 		RequestId: "00000000-0000-0000-0000-000000000000",
-	}
-
-	w.WriteHeader(er.HttpError)
-	enc := xml.NewEncoder(w)
-	enc.Indent("  ", "    ")
-	if err := enc.Encode(respStruct); err != nil {
-		log.Printf("error: %v\n", err)
-	}
-}
-
-func SendResponseBack(w http.ResponseWriter, req *http.Request, respStruct interface{}, content string) {
-	if content == "JSON" {
-		w.Header().Set("Content-Type", "application/json")
-		enc := json.NewEncoder(w)
-		if err := enc.Encode(respStruct); err != nil {
-			log.Printf("error: %v\n", err)
-		}
-	} else {
-		w.Header().Set("Content-Type", "application/xml")
-		enc := xml.NewEncoder(w)
-		enc.Indent("  ", "    ")
-		if err := enc.Encode(respStruct); err != nil {
-			log.Printf("error: %v\n", err)
-		}
 	}
 }

@@ -14,9 +14,8 @@ type ListTopicsResult struct {
 }
 
 type ListTopicsResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
+	Response
 	Result   ListTopicsResult `xml:"ListTopicsResult"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
 }
 
 /*** Create Topic Response */
@@ -25,9 +24,8 @@ type CreateTopicResult struct {
 }
 
 type CreateTopicResponse struct {
-	Xmlns    string            `xml:"xmlns,attr"`
+	Response
 	Result   CreateTopicResult `xml:"CreateTopicResult"`
-	Metadata ResponseMetadata  `xml:"ResponseMetadata"`
 }
 
 /*** Create Subscription ***/
@@ -36,23 +34,20 @@ type SubscribeResult struct {
 }
 
 type SubscribeResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
+	Response
 	Result   SubscribeResult  `xml:"SubscribeResult"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
 }
 
 /*** ConfirmSubscriptionResponse ***/
 type ConfirmSubscriptionResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
+	Response
 	Result   SubscribeResult  `xml:"ConfirmSubscriptionResult"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
 }
 
 /***  Set Subscription Response ***/
 
 type SetSubscriptionAttributesResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
+	Response
 }
 
 /*** Get Subscription Attributes ***/
@@ -71,9 +66,8 @@ type SubscriptionAttributeEntry struct {
 }
 
 type GetSubscriptionAttributesResponse struct {
-	Xmlns    string                          `xml:"xmlns,attr,omitempty"`
+	Response
 	Result   GetSubscriptionAttributesResult `xml:"GetSubscriptionAttributesResult"`
-	Metadata ResponseMetadata                `xml:"ResponseMetadata,omitempty"`
 }
 
 /*** List Subscriptions Response */
@@ -94,9 +88,8 @@ type ListSubscriptionsResult struct {
 }
 
 type ListSubscriptionsResponse struct {
-	Xmlns    string                  `xml:"xmlns,attr"`
+	Response
 	Result   ListSubscriptionsResult `xml:"ListSubscriptionsResult"`
-	Metadata ResponseMetadata        `xml:"ResponseMetadata"`
 }
 
 /*** List Subscriptions By Topic Response */
@@ -106,9 +99,8 @@ type ListSubscriptionsByTopicResult struct {
 }
 
 type ListSubscriptionsByTopicResponse struct {
-	Xmlns    string                  `xml:"xmlns,attr"`
+	Response
 	Result   ListSubscriptionsResult `xml:"ListSubscriptionsResult"`
-	Metadata ResponseMetadata        `xml:"ResponseMetadata"`
 }
 
 /*** Publish ***/
@@ -118,19 +110,16 @@ type PublishResult struct {
 }
 
 type PublishResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
+	Response
 	Result   PublishResult    `xml:"PublishResult"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
 }
 
 /*** Unsubscribe ***/
 type UnsubscribeResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
+	Response
 }
 
 /*** Delete Topic ***/
 type DeleteTopicResponse struct {
-	Xmlns    string           `xml:"xmlns,attr"`
-	Metadata ResponseMetadata `xml:"ResponseMetadata"`
+	Response
 }
