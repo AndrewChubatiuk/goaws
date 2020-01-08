@@ -4,14 +4,22 @@ type ResponseMetadata struct {
 
 /*** Error Responses ***/
 type ErrorResult struct {
-	Type    string `xml:"Type,omitempty"`
-	Code    string `xml:"Code,omitempty"`
-	Message string `xml:"Message,omitempty"`
+	HttpError int    `xml:"-`
+	Type      string `xml:"Type,omitempty"`
+	Code      string `xml:"Code,omitempty"`
+	Message   string `xml:"Message,omitempty"`
 }
 
 type ErrorResponse struct {
 	Result    ErrorResult `xml:"Error"`
 	RequestId string      `xml:"RequestId"`
+}
+
+func NewErrorResponse(err &ErrorResult) *ErrorResponse {
+	return &ErrorResponse{
+		Result:    err
+		RequestId: "00000000-0000-0000-0000-000000000000",
+	}
 }
 
 type Response struct {
@@ -28,7 +36,7 @@ func NewResponse(requestType string) *Response {
 		XsiType  = requestType
 		Metadata = &ResponseMetadata{
 			RequestId: "00000000-0000-0000-0000-000000000000"
-		}
+		},
 	}
 }
 
@@ -44,9 +52,9 @@ func (s * Service) Router() *mux.Router {
 	router := mux.NewRouter()
 	for path := range s.Paths {
 		router.Path(path)
-					.Queries("Action", "{Action}")
-					.HandlerFunc(s.Handle)
-					.Name(fmt.Sprintf("%s - %s", s.Handle, path))
+				.Queries("Action", "{Action}")
+				.HandlerFunc(s.Handle)
+				.Name(fmt.Sprintf("%s - %s", s.Handle, path))
 	}
 }
 
