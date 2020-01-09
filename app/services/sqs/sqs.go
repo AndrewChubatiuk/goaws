@@ -138,7 +138,7 @@ func (sqs * SQS) ListQueues(args map[string]string) (*ListQueuesResponse, error)
 	for _, queue := range sqs.Queues {
 		sqs.Lock()
 		if strings.HasPrefix(queue.Name, queueNamePrefix) {
-			resp.Result.QueueUrl = append(resp.Result.QueueUrl, fmt.Sprintf(queue.URL, host))
+			resp.Result.QueueUrl = append(resp.Result.QueueUrl, sqs.GetQueueUrl(queue, host))
 		}
 		sqs.Unlock()
 	}
@@ -147,14 +147,13 @@ func (sqs * SQS) ListQueues(args map[string]string) (*ListQueuesResponse, error)
 
 func (sqs * SQS) CreateQueue(args map[string]string) (*cCreateQueueResponse, error) {
 	queueName := args["QueueName"]
-	queueUrl := fmt.Sprintf("http://%s.%%s/%s/%s", sqs.Region, s.AccountID, queueName)
-	queueArn := fmt.Sprintf("arn:aws:sqs:%s:%s:%s", s.Region, s.AccountID, queueName)
+	queueUrl := sqs.QueueUrl(queueName, host)
 	if _, ok := sqs.Queues[queueName]; !ok {
 		log.Println("Creating Queue:", queueName)
 		queue := &app.Queue{
 			Name:                queueName,
-			URL:                 queueUrl,
-			Arn:                 queueArn,
+			URL:                 sqs.QueueUrl(queueName, host),
+			Arn:                 sqs.QueueArn(queueName),
 			TimeoutSecs:         sqs.QueueAttributeDefaults.VisibilityTimeout,
 			ReceiveWaitTimeSecs: sqs.QueueAttributeDefaults.ReceiveMessageWaitTimeSeconds,
 			IsFIFO:              app.HasFIFOQueueName(queueName),
@@ -644,15 +643,17 @@ func (sqs * SQS) PurgeQueue(args map[string]string) (*PurgeQueueResponse, error)
 func (sqs * SQS) GetQueueUrl(args map[string]string) (*GetQueueUrlResponse, error) {
 	vars := mux.Vars(req)
 	queueName := vars["queueName"]
+	host := args["host"]
 	if queue, ok := sqs.Queues[queueName]; ok {
-		url := fmt.Sprintf(queue.URL, req.Host)
+		url := sqs.QueueUrl(queueName, host)
 		log.Println("Get Queue URL:", queueName)
-		// Create, encode/xml and send response
-		result := app.GetQueueUrlResult{QueueUrl: url}
-		return &app.GetQueueUrlResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		return &GetQueueUrlResponse{
+			Response: &NewResponse()
+			Result: &app.GetQueueUrlResult{QueueUrl: url}
+		}
 	} else {
 		log.Println("Get Queue URL:", queueName, ", queue does not exist!!!")
-		createErrorResponse(w, req, "QueueNotFound")
+		createErrorResponse("QueueNotFound")
 	}
 }
 
@@ -691,11 +692,15 @@ func (sqs * SQS) GetQueueAttributes(args map[string]string) (*GetQueueAttributes
 		attr = app.Attribute{Name: "RedrivePolicy", Value: fmt.Sprintf(`{"maxReceiveCount": "%d", "deadLetterTargetArn":"%s"}`, queue.MaxReceiveCount, deadLetterTargetArn)}
 		attribs = append(attribs, attr)
 
-		result := app.GetQueueAttributesResult{Attrs: attribs}
-		return &app.GetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", result, app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		return &GetQueueAttributesResponse{
+			Response: &NewResponse(),
+			Result: &GetQueueAttributesResult{
+				Attrs: attribs,
+			},
+		}
 	} else {
 		log.Println("Get Queue URL:", queueName, ", queue does not exist!!!")
-		createErrorResponse(w, req, "QueueNotFound")
+		createErrorResponse("QueueNotFound")
 	}
 	sqs.RUnlock()
 }
@@ -708,17 +713,25 @@ func (sqs * SQS) SetQueueAttributes(args map[string]string) (*SetQueueAttributes
 	sqs.Lock()
 	if queue, ok := sqs.Queues[queueName]; ok {
 		if err := validateAndSetQueueAttributes(queue, req.Form); err != nil {
-			createErrorResponse(w, req, err.Error())
 			sqs.Unlock()
-			return
+			return createErrorResponse(err.Error())
 		}
-
-		return &app.SetQueueAttributesResponse{"http://queue.amazonaws.com/doc/2012-11-05/", app.ResponseMetadata{RequestId: "00000000-0000-0000-0000-000000000000"}}
+		return &SetQueueAttributesResponse{
+			Response: &NewResponse(),
+		}
 	} else {
 		log.Println("Get Queue URL:", queueName, ", queue does not exist!!!")
-		createErrorResponse(w, req, "QueueNotFound")
+		return createErrorResponse("QueueNotFound")
 	}
 	sqs.Unlock()
+}
+
+func (sqs * SQS) QueueUrl(queueName string, host string) string {
+	return fmt.Sprintf("https://%s.%s/%s/%s", sqs.Region, host, sqs.AccountID, queueName)
+}
+
+func (sqs * SQS) QueueArn(queueName string) string {
+	return fmt.Sprintf("arn:aws:sqs:%s:%s:%s", sqs.Region, sqs.AccountID, queueName)
 }
 
 func getMessageResult(m *app.Message) *app.ResultMessage {
